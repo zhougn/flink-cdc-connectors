@@ -40,7 +40,7 @@ import static org.apache.flink.util.Preconditions.checkArgument;
 /** Factory for creating configured instance of {@link PostgreSQLTableSource}. */
 public class PostgreSQLTableFactory implements DynamicTableSourceFactory {
 
-    private static final String IDENTIFIER = "postgres-cdc";
+    private static final String IDENTIFIER = "shared-postgres-cdc";
 
     private static final ConfigOption<String> HOSTNAME =
             ConfigOptions.key("hostname")

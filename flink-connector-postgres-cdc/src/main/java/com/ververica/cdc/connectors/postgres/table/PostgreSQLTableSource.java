@@ -35,6 +35,7 @@ import com.ververica.cdc.debezium.table.MetadataConverter;
 import com.ververica.cdc.debezium.table.RowDataDebeziumDeserializeSchema;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -72,6 +73,8 @@ public class PostgreSQLTableSource implements ScanTableSource, SupportsReadingMe
 
     /** Metadata that is appended at the end of a physical source row. */
     protected List<String> metadataKeys;
+
+    private final Map<String, SourceFunctionProvider> functionProviders = new HashMap<>();
 
     public PostgreSQLTableSource(
             ResolvedSchema physicalSchema,
@@ -117,6 +120,20 @@ public class PostgreSQLTableSource implements ScanTableSource, SupportsReadingMe
 
     @Override
     public ScanRuntimeProvider getScanRuntimeProvider(ScanContext scanContext) {
+        String name = dbzProperties.getProperty("name");
+        if (Objects.isNull(name) || "".equals(name)) {
+            return createScanRuntimeProvider(scanContext);
+        }
+
+        if (functionProviders.containsKey(name)) {
+            return functionProviders.get(name);
+        }
+
+        functionProviders.put(name, createScanRuntimeProvider(scanContext));
+        return functionProviders.get(name);
+    }
+
+    public SourceFunctionProvider createScanRuntimeProvider(ScanContext scanContext) {
         RowType physicalDataType =
                 (RowType) physicalSchema.toPhysicalRowDataType().getLogicalType();
         MetadataConverter[] metadataConverters = getMetadataConverters();
@@ -132,6 +149,7 @@ public class PostgreSQLTableSource implements ScanTableSource, SupportsReadingMe
                         .setValueValidator(new PostgresValueValidator(schemaName, tableName))
                         .setChangelogMode(changelogMode)
                         .build();
+
         DebeziumSourceFunction<RowData> sourceFunction =
                 PostgreSQLSource.<RowData>builder()
                         .hostname(hostname)
